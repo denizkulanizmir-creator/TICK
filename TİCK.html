@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>TİCK</title>
+<style>
+  * { box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+  }
+
+  body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: radial-gradient(ellipse at 50% 30%, #1a2238 0%, #0a0e1c 45%, #020308 100%);
+    font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .starfield {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+
+  .star {
+    position: absolute;
+    background: #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.9);
+    animation: twinkle var(--dur, 4s) ease-in-out infinite;
+    animation-delay: var(--delay, 0s);
+  }
+
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.15; transform: scale(1); }
+    50%      { opacity: 1;    transform: scale(1.4); }
+  }
+
+  .orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.5;
+    pointer-events: none;
+    z-index: 0;
+    mix-blend-mode: screen;
+  }
+
+  .orb-1 {
+    width: 400px; height: 400px;
+    top: 10%; left: 8%;
+    background: radial-gradient(circle, #7c4dff 0%, transparent 70%);
+    animation: orbDrift1 26s ease-in-out infinite alternate;
+  }
+
+  .orb-2 {
+    width: 380px; height: 380px;
+    bottom: 5%; right: 5%;
+    background: radial-gradient(circle, #00b0ff 0%, transparent 70%);
+    animation: orbDrift2 32s ease-in-out infinite alternate;
+  }
+
+  .orb-3 {
+    width: 320px; height: 320px;
+    top: 55%; left: 55%;
+    background: radial-gradient(circle, #00e676 0%, transparent 70%);
+    animation: orbDrift3 22s ease-in-out infinite alternate;
+  }
+
+  @keyframes orbDrift1 {
+    0%   { transform: translate(0, 0)      scale(1);    opacity: 0.4; }
+    100% { transform: translate(80px, 60px) scale(1.2); opacity: 0.65; }
+  }
+  @keyframes orbDrift2 {
+    0%   { transform: translate(0, 0)         scale(1);    opacity: 0.35; }
+    100% { transform: translate(-60px, -80px) scale(1.15); opacity: 0.6; }
+  }
+  @keyframes orbDrift3 {
+    0%   { transform: translate(0, 0)         scale(1);    opacity: 0.3; }
+    100% { transform: translate(-90px, 40px)  scale(1.25); opacity: 0.55; }
+  }
+
+  .stage {
+    position: relative;
+    width: 460px;
+    height: 460px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    perspective: 1400px;
+    opacity: 0;
+    transform: scale(0.85);
+    transition: opacity 0.5s ease, transform 0.9s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 2;
+  }
+
+  body.playing .stage {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  body:not(.playing) .stage * {
+    animation-play-state: paused !important;
+  }
+
+  .hint {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100;
+    pointer-events: none;
+    text-align: center;
+    transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.7s ease;
+  }
+
+  .hint-line {
+    display: block;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 15px;
+    font-weight: 300;
+    letter-spacing: 8px;
+    text-transform: uppercase;
+    text-shadow:
+      0 0 20px rgba(0, 230, 118, 0.5),
+      0 0 40px rgba(124, 77, 255, 0.3);
+    animation: hintGlow 3s ease-in-out infinite;
+  }
+
+  .hint-sub {
+    display: block;
+    margin-top: 14px;
+    color: rgba(255, 215, 110, 0.55);
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    animation: hintGlow 3s ease-in-out infinite 0.4s;
+  }
+
+  .hint-arrow {
+    display: block;
+    margin: 26px auto 0;
+    width: 26px;
+    height: 26px;
+    border-right: 1.5px solid rgba(255, 255, 255, 0.55);
+    border-bottom: 1.5px solid rgba(255, 255, 255, 0.55);
+    transform: rotate(45deg);
+    animation: arrowBob 2.2s ease-in-out infinite;
+    filter: drop-shadow(0 0 8px rgba(0, 230, 118, 0.6));
+  }
+
+  @keyframes hintGlow {
+    0%, 100% {
+      text-shadow:
+        0 0 15px rgba(0, 230, 118, 0.4),
+        0 0 30px rgba(124, 77, 255, 0.25);
+    }
+    50% {
+      text-shadow:
+        0 0 30px rgba(0, 230, 118, 0.9),
+        0 0 60px rgba(124, 77, 255, 0.55),
+        0 0 90px rgba(255, 215, 110, 0.35);
+    }
+  }
+
+  @keyframes arrowBob {
+    0%, 100% { transform: rotate(45deg) translate(0, 0); opacity: 0.5; }
+    50%      { transform: rotate(45deg) translate(6px, 6px); opacity: 1; }
+  }
+
+  body.playing .hint {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.4);
+    filter: blur(12px);
+  }
+
+  .nebula {
+    position: absolute;
+    inset: -60px;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 35% 35%, rgba(120, 80, 255, 0.28) 0%, transparent 45%),
+      radial-gradient(circle at 65% 65%, rgba(0, 200, 255, 0.22) 0%, transparent 45%),
+      radial-gradient(circle at 50% 50%, rgba(0, 230, 118, 0.18) 0%, transparent 55%);
+    filter: blur(42px);
+    animation: drift 18s ease-in-out infinite alternate;
+  }
+
+  @keyframes drift {
+    0%   { transform: scale(1)    rotate(0deg);   opacity: 0.85; }
+    100% { transform: scale(1.18) rotate(28deg);  opacity: 1; }
+  }
+
+  .aurora-1, .aurora-2, .aurora-3 {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(24px);
+    mix-blend-mode: screen;
+  }
+
+  .aurora-1 {
+    width: 430px; height: 430px;
+    background: conic-gradient(
+      from 0deg,
+      transparent 0%, #00e676 8%, transparent 18%,
+      transparent 34%, #7c4dff 46%, transparent 58%,
+      transparent 72%, #ffd76e 84%, transparent 96%
+    );
+    opacity: 0.7;
+    animation: spin 20s linear infinite;
+  }
+
+  .aurora-2 {
+    width: 360px; height: 360px;
+    background: conic-gradient(
+      from 120deg,
+      transparent 0%, #4fc3f7 12%, transparent 28%,
+      transparent 52%, #00e676 66%, transparent 82%
+    );
+    opacity: 0.6;
+    animation: spin 13s linear infinite reverse;
+  }
+
+  .aurora-3 {
+    width: 300px; height: 300px;
+    background: conic-gradient(
+      from 240deg,
+      transparent 0%, #ffd76e 10%, transparent 24%,
+      transparent 60%, #7c4dff 74%, transparent 90%
+    );
+    opacity: 0.5;
+    animation: spin 8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .holo-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid transparent;
+    background:
+      linear-gradient(#000, #000) padding-box,
+      conic-gradient(
+        from 0deg,
+        rgba(255,255,255,0.05),
+        rgba(255,215,110,0.95),
+        rgba(255,255,255,0.05),
+        rgba(124,77,255,0.95),
+        rgba(255,255,255,0.05),
+        rgba(0,230,118,0.95),
+        rgba(255,255,255,0.05)
+      ) border-box;
+    animation: spin 16s linear infinite;
+  }
+
+  .holo-ring.outer { width: 320px; height: 320px; opacity: 0.7; animation-duration: 22s; }
+  .holo-ring.inner { width: 270px; height: 270px; opacity: 0.85; animation-duration: 11s; animation-direction: reverse; }
+
+  .burst {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle,
+      rgba(0, 230, 118, 0.75) 0%,
+      rgba(124, 77, 255, 0.4) 30%,
+      rgba(0, 176, 255, 0.25) 55%,
+      transparent 75%);
+    transform: scale(0);
+    pointer-events: none;
+    animation: burst 1.9s cubic-bezier(0.22, 1, 0.36, 1) 0.5s forwards;
+  }
+
+  @keyframes burst {
+    0%   { transform: scale(0);   opacity: 1; }
+    50%  { transform: scale(2.9); opacity: 0.55; }
+    100% { transform: scale(4);   opacity: 0; }
+  }
+
+  .diamond {
+    position: relative;
+    width: 240px; height: 240px;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 30% 20%,
+        rgba(255,255,255,1) 0%, rgba(255,255,255,0.6) 10%, transparent 32%),
+      radial-gradient(circle at 74% 84%,
+        rgba(255, 215, 110, 0.28) 0%, transparent 55%),
+      radial-gradient(circle at 20% 80%,
+        rgba(124, 77, 255, 0.22) 0%, transparent 50%),
+      radial-gradient(circle at 50% 100%,
+        rgba(0, 200, 255, 0.15) 0%, transparent 45%),
+      conic-gradient(
+        from 200deg,
+        #ffffff 0%,
+        #f0f5fc 8%,
+        #dde7f4 16%,
+        #fbfdff 24%,
+        #e4ecf7 32%,
+        #cfdaeb 40%,
+        #f5f9fe 48%,
+        #e0eaf6 56%,
+        #c7d5e8 64%,
+        #f0f6fc 72%,
+        #dae5f3 80%,
+        #eef4fb 88%,
+        #ffffff 100%
+      );
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow:
+      0 60px 120px rgba(0, 0, 0, 0.75),
+      0 0 0 1.5px rgba(255, 215, 110, 0.85),
+      0 0 0 3.5px rgba(255, 255, 255, 0.7),
+      0 0 90px rgba(0, 230, 118, 0.45),
+      0 0 150px rgba(124, 77, 255, 0.3),
+      inset 0 0 0 1px rgba(255, 255, 255, 1),
+      inset 0 -20px 46px rgba(80, 100, 140, 0.25),
+      inset 0 20px 46px rgba(255, 255, 255, 1);
+    z-index: 3;
+    animation:
+      diamondIn 1.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.6s both,
+      breathe 3.4s ease-in-out 3.5s infinite;
+  }
+
+  @keyframes diamondIn {
+    0%   { transform: scale(0) rotate(-180deg); opacity: 0; filter: blur(14px); }
+    55%  { transform: scale(1.2) rotate(18deg); opacity: 1; filter: blur(0); }
+    75%  { transform: scale(0.96) rotate(-4deg); }
+    100% { transform: scale(1) rotate(0deg); }
+  }
+
+  @keyframes breathe {
+    0%, 100% {
+      transform: scale(1);
+      box-shadow:
+        0 60px 120px rgba(0, 0, 0, 0.75),
+        0 0 0 1.5px rgba(255, 215, 110, 0.85),
+        0 0 0 3.5px rgba(255, 255, 255, 0.7),
+        0 0 90px rgba(0, 230, 118, 0.45),
+        0 0 150px rgba(124, 77, 255, 0.3),
+        inset 0 0 0 1px rgba(255, 255, 255, 1),
+        inset 0 -20px 46px rgba(80, 100, 140, 0.25),
+        inset 0 20px 46px rgba(255, 255, 255, 1);
+    }
+    50% {
+      transform: scale(1.1);
+      box-shadow:
+        0 70px 140px rgba(0, 0, 0, 0.8),
+        0 0 0 2px rgba(255, 215, 110, 1),
+        0 0 0 4px rgba(255, 255, 255, 0.9),
+        0 0 160px rgba(0, 230, 118, 0.7),
+        0 0 240px rgba(124, 77, 255, 0.5),
+        inset 0 0 0 1px rgba(255, 255, 255, 1),
+        inset 0 -24px 52px rgba(80, 100, 140, 0.32),
+        inset 0 24px 52px rgba(255, 255, 255, 1);
+    }
+  }
+
+  .diamond::before {
+    content: "";
+    position: absolute;
+    top: 5%; left: 8%;
+    width: 46%; height: 46%;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 40%,
+      rgba(255, 255, 255, 1) 0%,
+      rgba(255, 255, 255, 0.55) 32%,
+      transparent 72%);
+    filter: blur(9px);
+    pointer-events: none;
+  }
+
+  .diamond::after {
+    content: "";
+    position: absolute;
+    bottom: 10%; right: 12%;
+    width: 34%; height: 20%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(124, 77, 255, 0.42) 0%, transparent 70%);
+    filter: blur(12px);
+    pointer-events: none;
+  }
+
+  .gold-ring {
+    position: absolute;
+    width: 285px; height: 285px;
+    border-radius: 50%;
+    background: conic-gradient(
+      from 0deg,
+      transparent 0%,
+      rgba(255, 215, 110, 0) 40%,
+      rgba(255, 215, 110, 0.9) 50%,
+      rgba(255, 215, 110, 0) 60%,
+      transparent 100%
+    );
+    -webkit-mask: radial-gradient(circle, transparent 138px, #000 139px, #000 142px, transparent 143px);
+    mask: radial-gradient(circle, transparent 138px, #000 139px, #000 142px, transparent 143px);
+    animation: spin 6s linear infinite;
+    z-index: 4;
+    filter: drop-shadow(0 0 6px rgba(255, 215, 110, 0.9));
+  }
+
+  .check-svg {
+    width: 160px; height: 160px;
+    overflow: visible;
+    animation: svgBreathe 3.4s ease-in-out 3.5s infinite;
+  }
+
+  @keyframes svgBreathe {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.07); }
+  }
+
+  .check-base {
+    fill: none;
+    stroke: #00e676;
+    stroke-width: 15;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 150;
+    stroke-dashoffset: 150;
+    filter:
+      drop-shadow(0 0 24px rgba(0, 230, 118, 0.9))
+      drop-shadow(0 0 48px rgba(124, 77, 255, 0.6));
+    animation: drawCheck 0.95s cubic-bezier(0.65, 0, 0.35, 1) 1.15s forwards;
+  }
+
+  .check-core {
+    fill: none;
+    stroke: #00ffa3;
+    stroke-width: 9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 145;
+    stroke-dashoffset: 145;
+    animation: drawCheck 0.95s cubic-bezier(0.65, 0, 0.35, 1) 1.15s forwards;
+  }
+
+  .check-shine {
+    fill: none;
+    stroke: #ffffff;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 145;
+    stroke-dashoffset: 145;
+    opacity: 0.85;
+    filter: drop-shadow(0 0 4px #ffffff);
+    animation: drawCheck 0.95s cubic-bezier(0.65, 0, 0.35, 1) 1.2s forwards;
+  }
+
+  @keyframes drawCheck { to { stroke-dashoffset: 0; } }
+
+  .shimmer-white {
+    fill: none;
+    stroke: #ffffff;
+    stroke-width: 5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 34 400;
+    stroke-dashoffset: 34;
+    opacity: 0;
+    filter: drop-shadow(0 0 10px #ffffff);
+    animation: shimmerWhite 1.2s ease-out 2.05s forwards;
+  }
+
+  @keyframes shimmerWhite {
+    0%   { opacity: 1; stroke-dashoffset: 34; }
+    100% { opacity: 0; stroke-dashoffset: -400; }
+  }
+
+  .shimmer-gold {
+    fill: none;
+    stroke: #ffd76e;
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 22 400;
+    stroke-dashoffset: 22;
+    opacity: 0;
+    filter: drop-shadow(0 0 8px #ffd76e);
+    animation: shimmerGold 1.2s ease-out 2.15s forwards;
+  }
+
+  @keyframes shimmerGold {
+    0%   { opacity: 1; stroke-dashoffset: 22; }
+    100% { opacity: 0; stroke-dashoffset: -400; }
+  }
+
+  .tip-star {
+    fill: none;
+    stroke: #ffffff;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    opacity: 0;
+    transform-origin: 84px 23px;
+    filter: drop-shadow(0 0 6px #ffffff);
+    animation: tipStar 1.1s ease-out 2s forwards;
+  }
+
+  @keyframes tipStar {
+    0%   { opacity: 0; transform: scale(0)   rotate(0deg); }
+    40%  { opacity: 1; transform: scale(1.7) rotate(25deg); }
+    100% { opacity: 0; transform: scale(3.4) rotate(55deg); }
+  }
+
+  .tip-ring {
+    fill: none;
+    stroke: #7dffb3;
+    stroke-width: 2;
+    opacity: 0;
+    transform-origin: 84px 23px;
+    animation: tipRing 1.2s ease-out 2.05s forwards;
+  }
+
+  @keyframes tipRing {
+    0%   { opacity: 0.95; transform: scale(0.15); }
+    100% { opacity: 0;    transform: scale(2.8); }
+  }
+
+  .tip-ring-gold {
+    fill: none;
+    stroke: #ffd76e;
+    stroke-width: 1.6;
+    opacity: 0;
+    transform-origin: 84px 23px;
+    animation: tipRingGold 1.4s ease-out 2.2s forwards;
+  }
+
+  @keyframes tipRingGold {
+    0%   { opacity: 0.9; transform: scale(0.1); }
+    100% { opacity: 0;   transform: scale(3.4); }
+  }
+
+  .dust {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 6px; height: 6px;
+    margin: -3px 0 0 -3px;
+    border-radius: 50%;
+    background: #00e676;
+    box-shadow: 0 0 14px #00e676, 0 0 28px rgba(0, 230, 118, 0.7), 0 0 3px #ffffff;
+    opacity: 0;
+    z-index: 5;
+    pointer-events: none;
+  }
+
+  .dust.gold {
+    background: #ffd76e;
+    box-shadow: 0 0 14px #ffd76e, 0 0 30px rgba(255, 215, 110, 0.75), 0 0 3px #ffffff;
+    width: 5px; height: 5px;
+  }
+
+  .dust.violet {
+    background: #a48bff;
+    box-shadow: 0 0 16px #a48bff, 0 0 34px rgba(124, 77, 255, 0.8), 0 0 3px #ffffff;
+    width: 7px; height: 7px;
+  }
+
+  .dust.blue {
+    background: #4fc3f7;
+    box-shadow: 0 0 14px #4fc3f7, 0 0 28px rgba(79, 195, 247, 0.75), 0 0 3px #ffffff;
+    width: 6.5px; height: 6.5px;
+  }
+
+  .dust:nth-child(1)  { --dx: -190px; --dy: -150px; animation: fly 1.8s ease-out 2.2s; }
+  .dust:nth-child(2)  { --dx:  170px; --dy: -165px; animation: fly 1.8s ease-out 2.3s; }
+  .dust:nth-child(3)  { --dx: -160px; --dy:  140px; animation: fly 1.8s ease-out 2.25s; }
+  .dust:nth-child(4)  { --dx:  180px; --dy:  150px; animation: fly 1.8s ease-out 2.35s; }
+  .dust:nth-child(5)  { --dx:  205px; --dy:  -45px; animation: fly 1.8s ease-out 2.22s; }
+  .dust:nth-child(6)  { --dx: -205px; --dy:  -35px; animation: fly 1.8s ease-out 2.28s; }
+  .dust:nth-child(7)  { --dx:   55px; --dy: -205px; animation: fly 1.8s ease-out 2.32s; }
+  .dust:nth-child(8)  { --dx:  -60px; --dy:  210px; animation: fly 1.8s ease-out 2.38s; }
+  .dust:nth-child(9)  { --dx:  145px; --dy: -130px; animation: fly 1.8s ease-out 2.4s;  }
+  .dust:nth-child(10) { --dx: -145px; --dy: -120px; animation: fly 1.8s ease-out 2.45s; }
+  .dust:nth-child(11) { --dx:  130px; --dy:  160px; animation: fly 1.8s ease-out 2.42s; }
+  .dust:nth-child(12) { --dx: -135px; --dy:  165px; animation: fly 1.8s ease-out 2.48s; }
+  .dust:nth-child(13) { --dx:  215px; --dy:   25px; animation: fly 1.8s ease-out 2.5s;  }
+  .dust:nth-child(14) { --dx: -215px; --dy:   15px; animation: fly 1.8s ease-out 2.52s; }
+  .dust:nth-child(15) { --dx:   35px; --dy:  220px; animation: fly 1.8s ease-out 2.55s; }
+  .dust:nth-child(16) { --dx:  -40px; --dy: -220px; animation: fly 1.8s ease-out 2.58s; }
+  .dust:nth-child(17) { --dx:  170px; --dy:  -95px; animation: fly 1.8s ease-out 2.6s;  }
+  .dust:nth-child(18) { --dx: -170px; --dy:  105px; animation: fly 1.8s ease-out 2.62s; }
+  .dust:nth-child(19) { --dx:   95px; --dy:  190px; animation: fly 1.8s ease-out 2.65s; }
+  .dust:nth-child(20) { --dx: -105px; --dy: -190px; animation: fly 1.8s ease-out 2.68s; }
+
+  @keyframes fly {
+    0%   { opacity: 1; transform: translate(0, 0) scale(1); }
+    70%  { opacity: 1; }
+    100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.1); }
+  }
+</style>
+</head>
+<body>
+
+  <div class="starfield"></div>
+
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+
+  <div class="hint">
+    <span class="hint-line">Tap to Reveal</span>
+    <span class="hint-sub">Click anywhere</span>
+    <div class="hint-arrow"></div>
+  </div>
+
+  <div class="stage">
+    <div class="nebula"></div>
+    <div class="aurora-1"></div>
+    <div class="aurora-2"></div>
+    <div class="aurora-3"></div>
+    <div class="holo-ring outer"></div>
+    <div class="holo-ring inner"></div>
+    <div class="burst"></div>
+
+    <div class="gold-ring"></div>
+
+    <div class="diamond">
+      <svg class="check-svg" viewBox="0 0 100 100">
+        <path class="check-base"
+              d="M 14 52
+                 C 18 47, 28 46, 34 54
+                 C 39 61, 42 67, 45 70
+                 C 47.5 73, 50 72.5, 52 68.5
+                 C 58 54, 68 37, 84 23" />
+        <path class="check-core"
+              d="M 14 52
+                 C 18 47, 28 46, 34 54
+                 C 39 61, 42 67, 45 70
+                 C 47.5 73, 50 72.5, 52 68.5
+                 C 58 54, 68 37, 84 23" />
+        <path class="check-shine"
+              d="M 14 52
+                 C 18 47, 28 46, 34 54
+                 C 39 61, 42 67, 45 70
+                 C 47.5 73, 50 72.5, 52 68.5
+                 C 58 54, 68 37, 84 23" />
+        <path class="shimmer-white"
+              d="M 14 52
+                 C 18 47, 28 46, 34 54
+                 C 39 61, 42 67, 45 70
+                 C 47.5 73, 50 72.5, 52 68.5
+                 C 58 54, 68 37, 84 23" />
+        <path class="shimmer-gold"
+              d="M 14 52
+                 C 18 47, 28 46, 34 54
+                 C 39 61, 42 67, 45 70
+                 C 47.5 73, 50 72.5, 52 68.5
+                 C 58 54, 68 37, 84 23" />
+        <circle class="tip-ring"      cx="84" cy="23" r="10" />
+        <circle class="tip-ring-gold" cx="84" cy="23" r="10" />
+        <g class="tip-star">
+          <line x1="84" y1="8"  x2="84" y2="38" />
+          <line x1="69" y1="23" x2="99" y2="23" />
+          <line x1="73" y1="12" x2="95" y2="34" />
+          <line x1="95" y1="12" x2="73" y2="34" />
+        </g>
+      </svg>
+    </div>
+
+    <div class="dust violet" style="--dx: -190px; --dy: -150px;"></div>
+    <div class="dust gold"   style="--dx:  170px; --dy: -165px;"></div>
+    <div class="dust"        style="--dx: -160px; --dy:  140px;"></div>
+    <div class="dust gold"   style="--dx:  180px; --dy:  150px;"></div>
+    <div class="dust blue"   style="--dx:  205px; --dy:  -45px;"></div>
+    <div class="dust violet" style="--dx: -205px; --dy:  -35px;"></div>
+    <div class="dust gold"   style="--dx:   55px; --dy: -205px;"></div>
+    <div class="dust"        style="--dx:  -60px; --dy:  210px;"></div>
+    <div class="dust blue"   style="--dx:  145px; --dy: -130px;"></div>
+    <div class="dust"        style="--dx: -145px; --dy: -120px;"></div>
+    <div class="dust gold"   style="--dx:  130px; --dy:  160px;"></div>
+    <div class="dust blue"   style="--dx: -135px; --dy:  165px;"></div>
+    <div class="dust violet" style="--dx:  215px; --dy:   25px;"></div>
+    <div class="dust gold"   style="--dx: -215px; --dy:   15px;"></div>
+    <div class="dust blue"   style="--dx:   35px; --dy:  220px;"></div>
+    <div class="dust"        style="--dx:  -40px; --dy: -220px;"></div>
+    <div class="dust gold"   style="--dx:  170px; --dy:  -95px;"></div>
+    <div class="dust violet" style="--dx: -170px; --dy:  105px;"></div>
+    <div class="dust blue"   style="--dx:   95px; --dy:  190px;"></div>
+    <div class="dust gold"   style="--dx: -105px; --dy: -190px;"></div>
+  </div>
+
+<script>
+  const starfield = document.querySelector('.starfield');
+  const starCount = 90;
+
+  for (let i = 0; i < starCount; i++) {
+    const star = document.createElement('div');
+    star.className = 'star';
+    const size = Math.random() * 2.2 + 0.6;
+    star.style.width = size + 'px';
+    star.style.height = size + 'px';
+    star.style.left = Math.random() * 100 + '%';
+    star.style.top = Math.random() * 100 + '%';
+    star.style.setProperty('--dur', (Math.random() * 4 + 2.5) + 's');
+    star.style.setProperty('--delay', (Math.random() * 5) + 's');
+    star.style.opacity = 0.3 + Math.random() * 0.7;
+    starfield.appendChild(star);
+  }
+
+  let audioCtx;
+  let soundtrackStarted = false;
+
+  const NOTES = {
+    G3:  196.00,
+    A3:  220.00,
+    Bb3: 233.08,
+    B3:  246.94,
+    C4:  261.63,
+    D4:  293.66,
+    Eb4: 311.13,
+    E4:  329.63,
+    F4:  349.23,
+    G4:  392.00,
+    Ab4: 415.30,
+    A4:  440.00,
+    Bb4: 466.16,
+    B4:  493.88,
+    C5:  523.25,
+    D5:  587.33,
+    Eb5: 622.25,
+    E5:  659.25,
+    F5:  698.46,
+    G5:  783.99
+  };
+
+  function getCtx() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    return audioCtx;
+  }
+
+  function playTone(opts) {
+    const ctx = getCtx();
+    const t0 = ctx.currentTime + (opts.when || 0);
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = opts.type || 'sine';
+    osc.frequency.setValueAtTime(opts.freq, t0);
+    if (opts.glideTo) osc.frequency.exponentialRampToValueAtTime(opts.glideTo, t0 + opts.dur);
+    gain.gain.setValueAtTime(0, t0);
+    gain.gain.linearRampToValueAtTime(opts.vol || 0.15, t0 + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + opts.dur);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + opts.dur + 0.05);
+  }
+
+  function playBell(freq, when, dur, vol) {
+    const ctx = getCtx();
+    const t0 = ctx.currentTime + when;
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const osc3 = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc1.type = 'sine';
+    osc2.type = 'sine';
+    osc3.type = 'triangle';
+
+    osc1.frequency.setValueAtTime(freq, t0);
+    osc2.frequency.setValueAtTime(freq * 2, t0);
+    osc3.frequency.setValueAtTime(freq * 3, t0);
+
+    gain.gain.setValueAtTime(0, t0);
+    gain.gain.linearRampToValueAtTime(vol || 0.11, t0 + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+
+    const g2 = ctx.createGain();
+    const g3 = ctx.createGain();
+    g2.gain.value = 0.35;
+    g3.gain.value = 0.15;
+
+    osc1.connect(gain);
+    osc2.connect(g2).connect(gain);
+    osc3.connect(g3).connect(gain);
+    gain.connect(ctx.destination);
+
+    osc1.start(t0);
+    osc2.start(t0);
+    osc3.start(t0);
+    osc1.stop(t0 + dur + 0.05);
+    osc2.stop(t0 + dur + 0.05);
+    osc3.stop(t0 + dur + 0.05);
+  }
+
+  function playWhoosh(when) {
+    const ctx = getCtx();
+    const t0 = ctx.currentTime + (when || 0);
+    const bufferSize = ctx.sampleRate * 0.9;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      const n = i / bufferSize;
+      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - n, 2.5);
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(500, t0);
+    filter.frequency.exponentialRampToValueAtTime(2200, t0 + 0.9);
+    filter.Q.value = 1.2;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, t0);
+    gain.gain.linearRampToValueAtTime(0.18, t0 + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.9);
+    src.connect(filter).connect(gain).connect(ctx.destination);
+    src.start(t0);
+    src.stop(t0 + 1);
+  }
+
+  function playCrystalBell(when) {
+    playTone({ freq: 987.77,  dur: 1.6, type: 'sine',     vol: 0.14, when: when });
+    playTone({ freq: 1318.51, dur: 1.4, type: 'sine',     vol: 0.08, when: when + 0.02 });
+    playTone({ freq: 1975.53, dur: 1.0, type: 'triangle', vol: 0.04, when: when + 0.05 });
+  }
+
+  function playDrawing(when) {
+    const ctx = getCtx();
+    const t0 = ctx.currentTime + when;
+    const dur = 0.9;
+    const bufferSize = ctx.sampleRate * dur;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      const n = i / bufferSize;
+      data[i] = (Math.random() * 2 - 1) * 0.6 * (1 - n * 0.7);
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(1200, t0);
+    filter.frequency.exponentialRampToValueAtTime(4200, t0 + dur);
+    filter.Q.value = 3;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, t0);
+    gain.gain.linearRampToValueAtTime(0.06, t0 + 0.1);
+    gain.gain.linearRampToValueAtTime(0.1, t0 + dur * 0.7);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    src.connect(filter).connect(gain).connect(ctx.destination);
+    src.start(t0);
+    src.stop(t0 + dur + 0.05);
+  }
+
+  function playSuccessDing(when) {
+    playTone({ freq: 1318.51, dur: 1.8, type: 'sine',     vol: 0.18, when: when });
+    playTone({ freq: 1975.53, dur: 1.6, type: 'sine',     vol: 0.10, when: when + 0.01 });
+    playTone({ freq: 2637.02, dur: 1.2, type: 'triangle', vol: 0.05, when: when + 0.03 });
+    playTone({ freq: 659.25,  dur: 1.8, type: 'sine',     vol: 0.07, when: when });
+  }
+
+  function playGoldShimmer(when) {
+    playTone({ freq: 1760, dur: 0.9, type: 'sine', vol: 0.05, when: when, glideTo: 3520 });
+    playTone({ freq: 2349, dur: 0.8, type: 'sine', vol: 0.035, when: when + 0.05, glideTo: 4698 });
+  }
+
+  function playSparkles(when) {
+    const notes = [2093, 2637, 3136, 2637, 2093, 3136, 2349, 2794, 3520, 2794];
+    notes.forEach((f, i) => {
+      playTone({ freq: f, dur: 0.5, type: 'sine', vol: 0.03, when: when + i * 0.045 });
+    });
+  }
+
+  const MELODY = [
+    { n: 'G4',  d: 0.40 },
+    { n: 'C5',  d: 0.40 },
+    { n: 'G4',  d: 0.40 },
+    { n: 'F4',  d: 0.40 },
+    { n: 'E4',  d: 0.40 },
+    { n: 'D4',  d: 0.40 },
+    { n: 'C4',  d: 0.60 },
+    { n: 'G4',  d: 0.40 },
+
+    { n: 'F4',  d: 0.40 },
+    { n: 'E4',  d: 0.40 },
+    { n: 'D4',  d: 0.40 },
+    { n: 'C4',  d: 0.60 },
+    { n: 'G4',  d: 0.40 },
+
+    { n: 'F4',  d: 0.40 },
+    { n: 'E4',  d: 0.40 },
+    { n: 'F4',  d: 0.40 },
+    { n: 'D4',  d: 0.70 },
+
+    { n: 'G4',  d: 0.40 },
+    { n: 'A4',  d: 0.40 },
+    { n: 'A4',  d: 0.40 },
+    { n: 'F4',  d: 0.40 },
+    { n: 'E4',  d: 0.40 },
+    { n: 'D4',  d: 0.40 },
+    { n: 'C4',  d: 0.60 },
+
+    { n: 'C4',  d: 0.40 },
+    { n: 'D4',  d: 0.40 },
+    { n: 'E4',  d: 0.40 },
+    { n: 'D4',  d: 0.40 },
+    { n: 'A4',  d: 0.40 },
+    { n: 'B4',  d: 0.70 },
+
+    { n: 'G4',  d: 0.40 },
+    { n: 'G4',  d: 0.40 },
+    { n: 'A4',  d: 0.40 },
+    { n: 'A4',  d: 0.60 },
+
+    { n: 'F4',  d: 0.40 },
+    { n: 'E4',  d: 0.40 },
+    { n: 'D4',  d: 0.40 },
+    { n: 'C4',  d: 0.40 },
+    { n: 'G4',  d: 0.40 },
+    { n: 'D4',  d: 0.40 },
+    { n: 'D4',  d: 0.70 },
+
+    { n: 'G4',  d: 0.40 },
+    { n: 'A4',  d: 0.40 },
+    { n: 'A4',  d: 0.40 },
+    { n: 'F4',  d: 0.40 },
+    { n: 'E4',  d: 0.40 },
+    { n: 'D4',  d: 0.40 },
+    { n: 'C4',  d: 0.60 },
+
+    { n: 'C4',  d: 0.40 },
+    { n: 'D4',  d: 0.40 },
+    { n: 'E4',  d: 0.40 },
+    { n: 'D4',  d: 0.40 },
+    { n: 'A4',  d: 0.40 },
+    { n: 'B4',  d: 0.70 },
+
+    { n: 'G4',  d: 0.40 },
+    { n: 'G4',  d: 0.40 },
+    { n: 'C5',  d: 0.40 },
+    { n: 'B4',  d: 0.40 },
+    { n: 'A4',  d: 0.40 },
+    { n: 'G4',  d: 0.40 },
+    { n: 'F4',  d: 0.40 },
+    { n: 'E4',  d: 0.40 },
+    { n: 'D4',  d: 0.40 },
+    { n: 'C4',  d: 0.80 },
+    { n: 'G4',  d: 0.80 }
+  ];
+
+  function playMelody(startTime, loop) {
+    let t = startTime;
+    MELODY.forEach((step, index) => {
+      const freq = NOTES[step.n];
+      if (!freq) return;
+
+      playBell(freq, t, step.d * 1.35, 0.10);
+      playBell(freq * 0.5, t, step.d * 1.4, 0.035);
+
+      if (index % 4 === 0) {
+        playBell(freq * 2, t + 0.02, step.d * 0.6, 0.025);
+      }
+
+      t += step.d;
+    });
+
+    if (loop) {
+      const total = t - startTime;
+      setTimeout(() => playMelody(0, true), total * 1000);
+    }
+  }
+
+  function scheduleBreathePulses() {
+    const cycle = 3.4;
+    let peakTime = 5.2;
+    const ctx = getCtx();
+    function pulse() {
+      const delay = (peakTime - ctx.currentTime) * 1000;
+      if (delay < 0) { peakTime += cycle; return pulse(); }
+      setTimeout(() => {
+        playTone({ freq: 880,     dur: 1.0, type: 'sine', vol: 0.02 });
+        playTone({ freq: 1318.51, dur: 0.9, type: 'sine', vol: 0.015, when: 0.04 });
+        peakTime += cycle;
+        pulse();
+      }, delay);
+    }
+    pulse();
+  }
+
+  function startSoundtrack() {
+    if (soundtrackStarted) return;
+    soundtrackStarted = true;
+    const ctx = getCtx();
+    const play = () => {
+      playWhoosh(0.5);
+      playCrystalBell(0.6);
+      playDrawing(1.15);
+      playSuccessDing(2.0);
+      playGoldShimmer(2.15);
+      playSparkles(2.2);
+
+      setTimeout(scheduleBreathePulses, 3500);
+
+      setTimeout(() => {
+        playMelody(0, true);
+      }, 3500);
+    };
+    if (ctx.state === 'suspended') {
+      ctx.resume().then(play);
+    } else {
+      play();
+    }
+  }
+
+  let started = false;
+
+  function handleClick() {
+    if (started) return;
+    started = true;
+    document.body.classList.add('playing');
+    startSoundtrack();
+  }
+
+  ['click', 'touchstart', 'keydown', 'pointerdown'].forEach(evt => {
+    window.addEventListener(evt, handleClick, { once: true, passive: true });
+  });
+</script>
+</body>
+</html>
